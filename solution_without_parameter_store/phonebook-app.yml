@@ -1,27 +1,24 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: |
-  CloudFormation Template for Phonebook Application. This template creates Application Load Balancer 
-  with Auto Scaling Group of Amazon Linux 2 (ami-090e0fc566929d98b) EC2 Instances which host Python Flask Web Application.
+  CloudFormation Template for Phonebook Application. This template creates Application Load Balancer
+  with Auto Scaling Group of Amazon Linux 2023 (ami-067d1e60475437da2 ) EC2 Instances which host Python Flask Web Application.
   EC2 instances are placed within WebServerSecurityGroup which allows http (80) connections only from ALBSecurityGroup,
-  and allows tcp(3306) connections only within itself. RDS DB instance is placed within WebServerSecurityGroup 
-  so that Database Server can communicate with Web Servers. Application Load Balancer is placed within ALBSecurityGroup 
-  which allows http (80) connections from anywhere. WebServerASG Auto Scaling Group is using the LT 
-  Launch Template in order to spin up instances needed. LT Launch Template is configured to prepare Python Flask 
-  environment on EC2, and to deploy Phonebook Application on Flask Server after downloading the app code 
+  and allows tcp(3306) connections only within itself. RDS DB instance is placed within WebServerSecurityGroup
+  so that Database Server can communicate with Web Servers. Application Load Balancer is placed within ALBSecurityGroup
+  which allows http (80) connections from anywhere. WebServerASG Auto Scaling Group is using the LT
+  Launch Template in order to spin up instances needed. LT Launch Template is configured to prepare Python Flask
+  environment on EC2, and to deploy Phonebook Application on Flask Server after downloading the app code
   from Github repository.
 Parameters:
-  MyVPC:
-    Description: VPC Id of your existing account
-    Type: AWS::EC2::VPC::Id
   KeyName:
-    Description: Please enter your Key pair
-    Type: AWS::EC2::KeyPair::KeyName 
+    Description: please select your key pair
+    Type: AWS::EC2::KeyPair::KeyName
   Subnets:
-    Description:  Please select your subnets used by ALB
+    Description:  please select your subnets used by ALB
     Type: List<AWS::EC2::Subnet::Id>
-  MyDbusername:
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /omer/phonebook/username
+  MyVPC:
+    Description: please select your VPC of your existing account
+    Type: AWS::EC2::VPC::Id  
 Resources:
   ASG:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -62,8 +59,6 @@ Resources:
         ImageId: ami-067d1e60475437da2 
         InstanceType: t2.micro
         KeyName: !Ref KeyName 
-        IamInstanceProfile: 
-          Name: !Ref MyInstanceProfile
         SecurityGroupIds:
           - !GetAtt WebServerSecurityGroup.GroupId
         TagSpecifications: 
@@ -75,7 +70,7 @@ Resources:
           Fn::Base64:
             !Sub 
               - |
-                #! /bin/bash -x
+                #!/bin/bash -x
                 yum update -y
                 yum install python3 -y
                 yum install python-pip -y
@@ -84,7 +79,7 @@ Resources:
                 pip3 install boto3
                 yum install git -y
                 echo "${MyDBURI}" > /home/ec2-user/dbserver.endpoint
-                TOKEN=$(aws --region=us-east-1 ssm get-parameter --name /omer/phonebook/token --with-decryption --query 'Parameter.Value' --output text)
+                TOKEN="--TOKEN_HERE--"
                 cd /home/ec2-user
                 git clone https://$TOKEN@github.com/OmerCanKarli/AWS-CloudFormation-Project-03.git
                 python3 /home/ec2-user/AWS-CloudFormation-Project-03/phonebook-app.py
@@ -93,82 +88,63 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties: 
       HealthyThresholdCount: 2 
-      HealthCheckTimeoutSeconds: 10
       Port: 80
       Protocol: HTTP 
       TargetType: instance 
       UnhealthyThresholdCount: 3
       VpcId: !Ref MyVPC
-  ALBSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Enable HTTP for Application Load Balancer # Required
-      SecurityGroupIngress: 
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-      VpcId: !Ref MyVPC 
-  WebServerSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Enable HTTP for Flask Web Server and SSH for getting into EC2 # Required
-      SecurityGroupIngress: 
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: 0.0.0.0/0
-      VpcId: !Ref MyVPC
   DBInstance:
     Type: AWS::RDS::DBInstance
     Properties:
       AllocatedStorage: 20
-      AllowMajorVersionUpgrade: false 
-      AutoMinorVersionUpgrade: false 
-      BackupRetentionPeriod: 0 
+      AllowMajorVersionUpgrade: false
+      AutoMinorVersionUpgrade: false
+      BackupRetentionPeriod: 0
       DBInstanceClass: db.t2.micro
-      DBInstanceIdentifier: phonebook-app 
-      DBName: clarusway_phonebook        
-      DBSecurityGroups:
-        - !Ref DBSecurityGroup 
+      DBInstanceIdentifier: phonebook-app
+      DBName: clarusway_phonebook
+      DBSecurityGroups: 
+        - !Ref DBSecurityGroup
       Engine: MySQL
-      EngineVersion: 8.0.32 
-      MasterUsername: !Ref MyDbusername
-      MasterUserPassword: '{{resolve:ssm-secure:/omer/phonebook/password:1}}'
-      Port: 3306 
+      EngineVersion: 8.0.32
+      MasterUserPassword: clarusway_1234
+      MasterUsername: admin
+      Port: 3306
       PubliclyAccessible: true
   DBSecurityGroup:
     Type: AWS::RDS::DBSecurityGroup
     Properties:
       DBSecurityGroupIngress: # Required
         - EC2SecurityGroupId: !GetAtt WebServerSecurityGroup.GroupId
-      GroupDescription: Back-end Database # Required
-  MyInstanceProfile:
-    Type: AWS::IAM::InstanceProfile
+      GroupDescription: This security group only allows from ec2 security group  # Required
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      InstanceProfileName: SSMInstanceProfile
-      Roles:
-        - !Ref MySSMRole
-  MySSMRole:
-    Type: AWS::IAM::Role
+      GroupDescription: This security group enables HTTP for ALB # Required
+      SecurityGroupIngress: 
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref MyVPC
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      RoleName: SSMRoleWithManagedPolicyotto
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ec2.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonSSMFullAccess
+      GroupDescription: This security group enables HTTP and SSH for Flask webserver # Required
+      GroupName: omer phonebook
+      SecurityGroupIngress: 
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0          
+      VpcId: !Ref MyVPC
 Outputs:
   WebsiteURL:
-    Value: !Sub 
+    Value: !Sub
       - http://${ALBAddress}
       - ALBAddress: !GetAtt ALB.DNSName
     Description: Phonebook Application Load Balancer URL
