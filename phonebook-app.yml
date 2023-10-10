@@ -11,20 +11,20 @@ Description: |
   from Github repository.
 Parameters:
   KeyName:
-    Description: choose your key pair
+    Description: please select your key pair
     Type: AWS::EC2::KeyPair::KeyName
   Subnets:
-    Description:  Please select your subnets used by ALB
+    Description:  please select your subnets used by ALB
     Type: List<AWS::EC2::Subnet::Id>
   MyVPC:
-    Description: VPC Id of your existing account
+    Description: please select your VPC of your existing account
     Type: AWS::EC2::VPC::Id  
 Resources:
   ASG:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties: 
       DesiredCapacity: 2
-      HealthCheckGracePeriod: 300
+      HealthCheckGracePeriod: 600
       HealthCheckType: ELB 
       LaunchTemplate:
         LaunchTemplateId: !Ref LT 
@@ -130,7 +130,7 @@ Resources:
   WebServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: This security group enables HTTP and SSH for flask webserver # Required
+      GroupDescription: This security group enables HTTP and SSH for Flask webserver # Required
       GroupName: omer phonebook
       SecurityGroupIngress: 
         - IpProtocol: tcp
@@ -140,11 +140,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          CidrIp: 0.0.0.0/0 
-        - IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
-          CidrIp: 0.0.0.0/0           
+          CidrIp: 0.0.0.0/0          
       VpcId: !Ref MyVPC
 Outputs:
   WebsiteURL:
