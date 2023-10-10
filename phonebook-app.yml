@@ -79,7 +79,7 @@ Resources:
                 pip3 install boto3
                 yum install git -y
                 echo "${MyDBURI}" > /home/ec2-user/dbserver.endpoint
-                TOKEN="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"
+                TOKEN="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"
                 cd /home/ec2-user
                 git clone https://$TOKEN@github.com/OmerCanKarli/AWS-CloudFormation-Project-03.git
                 python3 /home/ec2-user/AWS-CloudFormation-Project-03/phonebook-app.py
